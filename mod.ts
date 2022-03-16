@@ -1,5 +1,5 @@
-import { assertEquals, ensureFileSync, isCi, JSON5, path } from "./deps.ts";
-import mask from "./lib/mask.ts";
+import { assertEquals, ensureFileSync, isCi, JSON5, path } from './deps.ts';
+import mask from './lib/mask.ts';
 
 const trace = false;
 const debug = (msg: string) => {
@@ -10,7 +10,7 @@ const debug = (msg: string) => {
 
 type SnapshotFn = (actual: unknown, masks?: string[], name?: string) => void;
 
-type ExecMode = "validate" | "update" | "refresh";
+type ExecMode = 'validate' | 'update' | 'refresh';
 
 interface TestContext {
   name: string;
@@ -18,9 +18,9 @@ interface TestContext {
   execMode: ExecMode;
 }
 
-type WrappedTest = (t: TestContext) => void | Promise<void>;
-type WrappedTestDefinition = Omit<Deno.TestDefinition, "fn"> & {
-  fn: WrappedTest;
+type Test = (t: TestContext) => void | Promise<void>;
+type TestDefinition = Omit<Deno.TestDefinition, 'fn'> & {
+  fn: Test;
 };
 
 /**
@@ -28,10 +28,10 @@ type WrappedTestDefinition = Omit<Deno.TestDefinition, "fn"> & {
  * TestContext provides a test specific "assertSnapshot" function that can be used to
  */
 function compose(
-  _test = Deno.test,
+  _test = Deno.test
 ): (
-  name: string | WrappedTestDefinition,
-  fn?: (t: TestContext) => void,
+  name: string | TestDefinition,
+  fn?: (t: TestContext) => void
 ) => void | Promise<void> {
   const execMode = snapshotMode();
   debug(`execMode: ${execMode}`);
@@ -45,7 +45,7 @@ function compose(
   };
 
   function readSnapshotsFromDisk(snapshotFile: string) {
-    if (0 === Object.keys(contextMap).length && execMode === "refresh") {
+    if (0 === Object.keys(contextMap).length && execMode === 'refresh') {
       // First assertSnapshot in a given file and in refresh mode.
       // Empty the assertSnapshot file, clears any unused snapshots.
       // Clears any unused snapshots.
@@ -57,17 +57,15 @@ function compose(
     return JSON5.parse(Deno.readTextFileSync(snapshotFile) || `{}`);
   }
 
-  return (
-    name: string | WrappedTestDefinition,
-    fn: (t: TestContext) => void = () => {},
-  ): void | Promise<void> => {
+  return (name, fn) => {
     // create testDefinition - this will be passed to Deno.test()
-    const testDefinition = typeof name === "string"
-      ? {
-        name,
-        fn,
-      }
-      : name;
+    const testDefinition =
+      typeof name === 'string'
+        ? {
+            name,
+            fn,
+          }
+        : name;
 
     const assertSnapshot: SnapshotFn = (actual, masks = [], title) => {
       const sourceMap = getSourceMap();
@@ -78,29 +76,30 @@ function compose(
       }
 
       const c = getCount();
-      title = title && title !== testDefinition.name
-        ? title
-        : c === 1
-        ? testDefinition.name
-        : `${testDefinition.name}:#${c}`;
+      title =
+        title && title !== testDefinition.name
+          ? title
+          : c === 1
+          ? testDefinition.name
+          : `${testDefinition.name}:#${c}`;
       debug(`\n Snapshot: ${title} ${c}`);
       debug(`  sourceMap: ${sourceMap}`);
       if (Object.keys(contextMap).includes(title)) {
         throw new Error(
-          `Duplicate assertSnapshot title - ${title} ${c} ${name}\n  ${sourceMap}`,
+          `Duplicate assertSnapshot title - ${title} ${c} ${name}\n  ${sourceMap}`
         );
       }
       const expected = snapshots[title] ?? null;
       const _actual = mask(actual, masks);
       contextMap[title] = sourceMap;
       switch (execMode) {
-        case "refresh": {
+        case 'refresh': {
           // if first attempt, delete
           snapshots[title] = _actual;
           snapshotsHaveUpdates[snapshotFile] = true;
           break;
         }
-        case "validate": {
+        case 'validate': {
           if (expected) {
             compareSnapshots(_actual, expected, title, sourceMap);
           } else {
@@ -109,7 +108,7 @@ function compose(
           }
           break;
         }
-        case "update": {
+        case 'update': {
           try {
             compareSnapshots(_actual, expected, title, sourceMap);
           } catch {
@@ -130,7 +129,7 @@ function compose(
         }
         Deno.writeTextFileSync(
           snapshotFile,
-          JSON5.stringify(snapshots, { space: 2 }),
+          JSON5.stringify(snapshots, { space: 2 })
         );
       }
     };
@@ -153,9 +152,9 @@ export default test;
 
 function getSourceMap(depth = 3) {
   try {
-    throw new Error("trying to generate a assertSnapshot filename");
+    throw new Error('trying to generate a assertSnapshot filename');
   } catch (err) {
-    return err.stack.split("\n")[depth].trim().replace(/at /, "");
+    return err.stack.split('\n')[depth].trim().replace(/at /, '');
   }
 }
 
@@ -174,20 +173,20 @@ function getSnapshotFileName(callContext: string) {
  * Usage: `snapshotMode(Deno.args)`
  */
 export function snapshotMode(args: string[] = Deno.args): ExecMode {
-  if (args.includes("-u") || args.includes("--update")) {
-    return "update";
+  if (args.includes('-u') || args.includes('--update')) {
+    return 'update';
   }
-  if (args.includes("-r") || args.includes("--refresh")) {
-    return "refresh";
+  if (args.includes('-r') || args.includes('--refresh')) {
+    return 'refresh';
   }
-  return "validate";
+  return 'validate';
 }
 
 export function compareSnapshots(
   actual: unknown,
   expected: unknown,
   title: string,
-  sourceMap: string,
+  sourceMap: string
 ) {
   try {
     // stringify+parse to ensure that "undefined" fields are removed.
@@ -195,11 +194,9 @@ export function compareSnapshots(
     actual = JSON5.parse(JSON5.stringify(actual));
     assertEquals(actual, expected);
   } catch (err) {
-    const message = `Snapshot mismatch:\n  ${title}\n  ${sourceMap}\n  ${
-      err.message
-        .split("\n")
-        .join("\n  ")
-    }`;
+    const message = `Snapshot mismatch:\n  ${title}\n  ${sourceMap}\n  ${err.message
+      .split('\n')
+      .join('\n  ')}`;
     throw new Error(message);
   }
 }
