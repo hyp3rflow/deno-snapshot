@@ -1,5 +1,5 @@
-import { assertEquals, ensureFileSync, isCi, JSON5, path } from './deps.ts';
-import mask from './lib/mask.ts';
+import { assertEquals, ensureFileSync, JSON5, path } from "./deps.ts";
+import mask from "./lib/mask.ts";
 
 const trace = false;
 const debug = (msg: string) => {
@@ -67,8 +67,7 @@ function compose(
         : name;
 
     const assertSnapshot: SnapshotFn = (actual, masks = [], title) => {
-      const sourceMap = getSourceMap();
-      const snapshotFile = getSnapshotFileName(sourceMap);
+      const snapshotFile = getSnapshotFileName();
       const snapshots = readSnapshotsFromDisk(snapshotFile);
       if (!Object.keys(contextMap).includes(testDefinition.name)) {
         resetCount();
@@ -82,15 +81,13 @@ function compose(
           ? testDefinition.name
           : `${testDefinition.name}:#${c}`;
       debug(`\n Snapshot: ${title} ${c}`);
-      debug(`  sourceMap: ${sourceMap}`);
       if (Object.keys(contextMap).includes(title)) {
         throw new Error(
-          `Duplicate assertSnapshot title - ${title} ${c} ${name}\n  ${sourceMap}`
+          `Duplicate assertSnapshot title - ${title} ${c} ${name}\n`,
         );
       }
       const expected = snapshots[title] ?? null;
       const _actual = mask(actual, masks);
-      contextMap[title] = sourceMap;
       switch (execMode) {
         case 'refresh': {
           // if first attempt, delete
@@ -100,7 +97,7 @@ function compose(
         }
         case 'validate': {
           if (expected) {
-            compareSnapshots(_actual, expected, title, sourceMap);
+            compareSnapshots(_actual, expected, title, );
           } else {
             snapshots[title] = _actual;
             snapshotsHaveUpdates[snapshotFile] = true;
@@ -109,7 +106,7 @@ function compose(
         }
         case 'update': {
           try {
-            compareSnapshots(_actual, expected, title, sourceMap);
+            compareSnapshots(_actual, expected, title, );
           } catch {
             // There was assertSnapshot mismatch, but we are in update mode.
             // Prevents updating the file needlessly, reducing disk IO.
@@ -123,9 +120,6 @@ function compose(
       // this is done for each assertSnapshot, makes things a bit slower, but
       // is the most consistent way to keep track
       if (snapshotsHaveUpdates[snapshotFile]) {
-        if (isCi) {
-          throw new Error(`Cannot update snapshots on the CI server`);
-        }
         Deno.writeTextFileSync(
           snapshotFile,
           JSON5.stringify(snapshots, { space: 2 })
@@ -148,22 +142,10 @@ function compose(
 export const test = compose();
 export default test;
 
-function getSourceMap(depth = 3) {
-  try {
-    throw new Error('trying to generate a assertSnapshot filename');
-  } catch (err) {
-    return err.stack.split('\n')[depth].trim().replace(/at /, '');
-  }
-}
-
-function getSnapshotFileName(callContext: string) {
-  const segments = callContext.match(/file:\/+(..[^:]*):/);
-  const testFile = segments?.[1];
-  if (testFile) {
-    const parts = path.parse(testFile);
-    return `${parts.dir}/${parts.name}.snapshot`;
-  }
-  return ``;
+function getSnapshotFileName() {
+  const testFile = path.fromFileUrl(Deno.mainModule);
+  const parts = path.parse(testFile);
+  return `${parts.dir}/${parts.name}.snap`;
 }
 
 /**
@@ -184,7 +166,6 @@ export function compareSnapshots(
   actual: unknown,
   expected: unknown,
   title: string,
-  sourceMap: string
 ) {
   try {
     // stringify+parse to ensure that "undefined" fields are removed.
@@ -192,9 +173,11 @@ export function compareSnapshots(
     actual = JSON5.parse(JSON5.stringify(actual));
     assertEquals(actual, expected);
   } catch (err) {
-    const message = `Snapshot mismatch:\n  ${title}\n  ${sourceMap}\n  ${err.message
-      .split('\n')
-      .join('\n  ')}`;
+    const message = `Snapshot mismatch:\n  ${title}\n  ${
+      err.message
+        .split("\n")
+        .join("\n  ")
+    }`;
     throw new Error(message);
   }
 }
