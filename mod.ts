@@ -12,8 +12,7 @@ type SnapshotFn = (actual: unknown, masks?: string[], name?: string) => void;
 
 type ExecMode = 'validate' | 'update' | 'refresh';
 
-interface TestContext {
-  name: string;
+interface TestContext extends Deno.TestContext {
   assertSnapshot: SnapshotFn;
   execMode: ExecMode;
 }
@@ -63,7 +62,7 @@ function compose(
       typeof name === 'string'
         ? {
             name,
-            fn,
+            fn: fn!,
           }
         : name;
 
@@ -139,12 +138,11 @@ function compose(
       assertSnapshot,
       execMode,
     };
-    // Adjust for the fn being a WrappedTest instead of a
-    const _fn = testDefinition.fn;
-    testDefinition.fn = () => _fn(context);
-    // it's only when Deno.test decides to execute the tests, is any
-    // of the snapshot functionality exercised.
-    return _test(testDefinition as Deno.TestDefinition);
+    
+    return _test({
+      ...testDefinition,
+      fn: (testContext: Deno.TestContext) => testDefinition.fn({...context, ...testContext})
+    });
   };
 }
 export const test = compose();
