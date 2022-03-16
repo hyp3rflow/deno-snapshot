@@ -1,3 +1,6 @@
+# deno-snapshot
+Repository for implementing snapshot testing library compatible with `Deno.test` 
+
 # klick
 
 `klick` is a test snapshot library for Deno.
