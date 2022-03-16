@@ -5,6 +5,12 @@ test(`assertSnapshot Test`, ({ assertSnapshot }) => {
   assertSnapshot({ c: 2, d: "d" });
 });
 
+Deno.test('name', (t) => {
+  t.step('step 1', () => {
+    
+  })
+})
+
 test(`a second test`, ({ assertSnapshot }) => {
   assertSnapshot([1, 2, 3]);
   assertSnapshot("some string");
