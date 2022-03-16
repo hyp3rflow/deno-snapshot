@@ -10,7 +10,7 @@ const debug = (msg: string) => {
 
 type SnapshotFn = (actual: unknown, masks?: string[], name?: string) => void;
 
-type ExecMode = 'validate' | 'update' | 'refresh';
+type ExecMode = "validate" | "update" | "refresh";
 
 interface TestContext extends Deno.TestContext {
   assertSnapshot: SnapshotFn;
@@ -18,7 +18,7 @@ interface TestContext extends Deno.TestContext {
 }
 
 type Test = (t: TestContext) => void | Promise<void>;
-type TestDefinition = Omit<Deno.TestDefinition, 'fn'> & {
+type TestDefinition = Omit<Deno.TestDefinition, "fn"> & {
   fn: Test;
 };
 
@@ -26,25 +26,26 @@ type TestDefinition = Omit<Deno.TestDefinition, 'fn'> & {
  * Wraps Deno.test so the test function accepts an argument of TestContext.
  * TestContext provides a test specific "assertSnapshot" function that can be used to
  */
-function compose(
-  _test = Deno.test
-): (
-  name: string | TestDefinition,
-  fn?: (t: TestContext) => void
-) => void | Promise<void> {
+interface SnapTestFn {
+  (
+    nameOrDef: string | TestDefinition,
+    fn?: (t: TestContext) => void,
+  ): void | Promise<void>;
+}
+function compose(): SnapTestFn {
   const execMode = snapshotMode();
   debug(`execMode: ${execMode}`);
 
-  const contextMap: Record<string, string> = {};
+  const contextMap: Record<string, boolean> = {};
   const snapshotsHaveUpdates: Record<string, boolean> = {};
   let count = 0;
-  const getCount = () => (count += 1);
+  const getCount = () => ++count;
   const resetCount = () => {
     count = 0;
   };
 
   function readSnapshotsFromDisk(snapshotFile: string) {
-    if (0 === Object.keys(contextMap).length && execMode === 'refresh') {
+    if (0 === Object.keys(contextMap).length && execMode === "refresh") {
       // First assertSnapshot in a given file and in refresh mode.
       // Empty the assertSnapshot file, clears any unused snapshots.
       // Clears any unused snapshots.
@@ -56,15 +57,11 @@ function compose(
     return JSON5.parse(Deno.readTextFileSync(snapshotFile) || `{}`);
   }
 
-  return (name, fn) => {
-    // create testDefinition - this will be passed to Deno.test()
-    const testDefinition =
-      typeof name === 'string'
-        ? {
-            name,
-            fn: fn!,
-          }
-        : name;
+  return (nameOrFn, fn) => {
+    // @TODO: Fix this weird typing
+    const testDefinition = typeof nameOrFn === "string"
+      ? { name: nameOrFn, fn: fn! }
+      : nameOrFn;
 
     const assertSnapshot: SnapshotFn = (actual, masks = [], title) => {
       const snapshotFile = getSnapshotFileName();
@@ -74,39 +71,39 @@ function compose(
       }
 
       const c = getCount();
-      title =
-        title && title !== testDefinition.name
-          ? title
-          : c === 1
-          ? testDefinition.name
-          : `${testDefinition.name}:#${c}`;
+      title = title && title !== testDefinition.name
+        ? title
+        : c === 1
+        ? testDefinition.name
+        : `${testDefinition.name}:#${c}`;
       debug(`\n Snapshot: ${title} ${c}`);
       if (Object.keys(contextMap).includes(title)) {
         throw new Error(
-          `Duplicate assertSnapshot title - ${title} ${c} ${name}\n`,
+          `Duplicate assertSnapshot title - ${title} ${c} ${nameOrFn}\n`,
         );
       }
       const expected = snapshots[title] ?? null;
       const _actual = mask(actual, masks);
+      contextMap[title] = true;
       switch (execMode) {
-        case 'refresh': {
+        case "refresh": {
           // if first attempt, delete
           snapshots[title] = _actual;
           snapshotsHaveUpdates[snapshotFile] = true;
           break;
         }
-        case 'validate': {
+        case "validate": {
           if (expected) {
-            compareSnapshots(_actual, expected, title, );
+            compareSnapshots(_actual, expected, title);
           } else {
             snapshots[title] = _actual;
             snapshotsHaveUpdates[snapshotFile] = true;
           }
           break;
         }
-        case 'update': {
+        case "update": {
           try {
-            compareSnapshots(_actual, expected, title, );
+            compareSnapshots(_actual, expected, title);
           } catch {
             // There was assertSnapshot mismatch, but we are in update mode.
             // Prevents updating the file needlessly, reducing disk IO.
@@ -116,15 +113,17 @@ function compose(
           break;
         }
       }
-      // finally, if we have updates to the snapshotFile, write them out.
-      // this is done for each assertSnapshot, makes things a bit slower, but
-      // is the most consistent way to keep track
-      if (snapshotsHaveUpdates[snapshotFile]) {
-        Deno.writeTextFileSync(
-          snapshotFile,
-          JSON5.stringify(snapshots, { space: 2 })
-        );
-      }
+      Deno.writeTextFileSync(
+        snapshotFile,
+        JSON5.stringify(
+          Object.fromEntries(
+            Object.entries(snapshots).sort(([a], [b]) => {
+              return a < b ? -1 : 1;
+            }),
+          ),
+          { space: 2 },
+        ),
+      );
     };
 
     const context = {
@@ -132,10 +131,10 @@ function compose(
       assertSnapshot,
       execMode,
     };
-    
-    return _test({
+    return Deno.test({
       ...testDefinition,
-      fn: (testContext: Deno.TestContext) => testDefinition.fn({...context, ...testContext})
+      fn: (testContext: Deno.TestContext) =>
+        testDefinition.fn({ ...context, ...testContext }),
     });
   };
 }
@@ -153,13 +152,13 @@ function getSnapshotFileName() {
  * Usage: `snapshotMode(Deno.args)`
  */
 export function snapshotMode(args: string[] = Deno.args): ExecMode {
-  if (args.includes('-u') || args.includes('--update')) {
-    return 'update';
+  if (args.includes("-u") || args.includes("--update")) {
+    return "update";
   }
-  if (args.includes('-r') || args.includes('--refresh')) {
-    return 'refresh';
+  if (args.includes("-r") || args.includes("--refresh")) {
+    return "refresh";
   }
-  return 'validate';
+  return "validate";
 }
 
 export function compareSnapshots(
