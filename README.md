@@ -1,5 +1,6 @@
 # deno-snapshot
-Repository for implementing snapshot testing library compatible with `Deno.test` 
+Repository for implementing snapshot testing library compatible with `Deno.test`.  
+The original repository is https://github.com/sramam/klick, and the related issue in deno is https://github.com/denoland/deno/issues/3635
 
 # klick
 
