@@ -1,4 +1,6 @@
 {
+  'mask no match error': 'None of the masks matched. This is likely an error',
+  'mask validation error': "Masks should begin from root '/'. Violations:\n  blah/*/blue\n  a/s/d/f\n  b/0/c",
   'mask with matches': {
     blah: [
       {
@@ -32,6 +34,4 @@
       },
     ],
   },
-  'mask validation error': "Masks should begin from root '/'. Violations:\n  blah/*/blue\n  a/s/d/f\n  b/0/c",
-  'mask no match error': 'None of the masks matched. This is likely an error',
 }

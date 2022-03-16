@@ -1,4 +1,4 @@
-import test from "../mod.ts";
+import test from "../snap.ts";
 import mask from "./mask.ts";
 
 const o = {
