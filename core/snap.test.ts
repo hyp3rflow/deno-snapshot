@@ -1,4 +1,4 @@
-import test from "./mod.ts";
+import test from "./snap.ts";
 
 test(`assertSnapshot Test`, ({ assertSnapshot }) => {
   assertSnapshot({ a: 1, b: "b" });
