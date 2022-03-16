@@ -2,7 +2,11 @@
 
 `Snap` is a test snapshot library for Deno. modified from [klick](https://github.com/sramam/klick).
 
-Features:
+## Goal
+- Implement `assertSnapshot` on testing in [deno_std](https://github.com/denoland/deno_std)
+  - After accomplished, this repo will not be maintained.
+
+## Features
 
 - Two update modes:
   1. `update` fine grained update (only filtered tests, even within a single
