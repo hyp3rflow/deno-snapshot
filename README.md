@@ -1,6 +1,6 @@
-# klick
+# Snap
 
-`klick` is a test snapshot library for Deno.
+`Snap` is a test snapshot library for Deno. modified from [klick](https://github.com/sramam/klick).
 
 Features:
 
@@ -22,7 +22,7 @@ In practice, we'll need to use this:
 - `--unstable`: for `fs` capability from deno std-lib
 
 Current deno implementation does not allow for wild-cards and globs in the
-permissions `allow-list`. Ideally, this is the set of permissions `klick` needs:
+permissions `allow-list`. Ideally, this is the set of permissions `snap` needs:
 
 - `--allow-read="./**/*.assertSnapshot"`: to read snapshots
 - `--allow-write="./**/*.assertSnapshot"`: to create/update snapshots
@@ -33,7 +33,7 @@ permissions `allow-list`. Ideally, this is the set of permissions `klick` needs:
 ### Writing tests
 
 ```
-import test from "https://deno.land/x/klick@0.1.3/mod.ts
+import test from "https://deno.land/x/snap/mod.ts";
 
 test(`Simple test`, ({ assertSnapshot}) => {
   const actual = {
@@ -43,7 +43,7 @@ test(`Simple test`, ({ assertSnapshot}) => {
   assertSnapshot(actual);
   actual.c = 'c'
   assertSnapshot(actual);
-})
+});
 
 test(`Test with masks`, ({ assertSnapshot}) => {
   const actual = {
@@ -59,7 +59,7 @@ test(`Test with masks`, ({ assertSnapshot}) => {
   }
   const masks = ['/c/start', '/c/randomArray/*']
   assertSnapshot(actual, masks);
-})
+});
 ```
 
 Masked snapshot:
